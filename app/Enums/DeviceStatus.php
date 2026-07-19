@@ -1,0 +1,11 @@
+<?php
+
+namespace App\Enums;
+
+enum DeviceStatus: string
+{
+    case Online = 'online';
+    case Offline = 'offline';
+    case Maintenance = 'maintenance';
+    case Unknown = 'unknown';
+}
