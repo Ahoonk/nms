@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['https://nms.askarya.id', 'http://localhost', 'http://localhost:3000' ],
+    'allowed_origins' => ['https://askarya.id', 'https://nms.askarya.id', 'http://localhost', 'http://localhost:3000' ],
 
     'allowed_origins_patterns' => [],
 
