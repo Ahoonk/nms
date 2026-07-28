@@ -11,6 +11,10 @@ defineProps({
         type: Array,
         required: true,
     },
+    availabilityPreview: {
+        type: Object,
+        required: true,
+    },
 });
 </script>
 
@@ -111,13 +115,100 @@ defineProps({
                     </div>
 
                     <div class="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900/50">
-                        <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Next Stage</h3>
-                        <ul class="mt-4 space-y-3 text-sm text-slate-600 dark:text-slate-400">
-                            <li>Service layer untuk Zabbix API</li>
-                            <li>Repository dan DTO untuk domain company/site/device</li>
-                            <li>Company scoped dashboard & navigation</li>
-                            <li>Problem, event, graph, dan availability widgets</li>
-                        </ul>
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Availability Preview</h3>
+                                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                    Snapshot host, status availability, dan device dari menu Monitoring.
+                                </p>
+                            </div>
+                            <span
+                                class="rounded-full px-3 py-1 text-xs font-medium"
+                                :class="availabilityPreview.meta?.message ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'"
+                            >
+                                {{ availabilityPreview.meta?.message ? 'No Connection' : 'Live' }}
+                            </span>
+                        </div>
+
+                        <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                            <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/80">
+                                <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Total Hosts</p>
+                                <p class="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
+                                    {{ availabilityPreview.summary?.total ?? 0 }}
+                                </p>
+                            </div>
+                            <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/80">
+                                <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Online</p>
+                                <p class="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-300">
+                                    {{ availabilityPreview.summary?.online ?? 0 }}
+                                </p>
+                            </div>
+                            <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/80">
+                                <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Offline</p>
+                                <p class="mt-2 text-2xl font-semibold text-rose-600 dark:text-rose-300">
+                                    {{ availabilityPreview.summary?.offline ?? 0 }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 space-y-3">
+                            <div
+                                v-for="host in availabilityPreview.items"
+                                :key="host.hostid"
+                                class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/60"
+                            >
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                                            {{ host.name }}
+                                        </p>
+                                        <p class="truncate text-xs text-slate-500 dark:text-slate-400">
+                                            {{ host.host }}
+                                        </p>
+                                    </div>
+                                    <div class="flex flex-col items-end gap-2">
+                                        <span class="rounded-full px-2.5 py-1 text-[11px] font-medium" :class="host.status_class">
+                                            {{ host.status }}
+                                        </span>
+                                        <span class="rounded-full px-2.5 py-1 text-[11px] font-medium" :class="host.availability_class">
+                                            {{ host.availability }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                                    <div>
+                                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                            Device
+                                        </p>
+                                        <p class="mt-1 text-sm font-medium text-slate-900 dark:text-white">
+                                            {{ host.device?.hostname ?? '-' }}
+                                        </p>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400">
+                                            {{ host.device?.device_type ?? '-' }}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                            Site
+                                        </p>
+                                        <p class="mt-1 text-sm font-medium text-slate-900 dark:text-white">
+                                            {{ host.site?.name ?? '-' }}
+                                        </p>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400">
+                                            {{ host.site?.company_name ?? 'Global' }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div
+                                v-if="!availabilityPreview.items.length"
+                                class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400"
+                            >
+                                No host data returned from Zabbix.
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
