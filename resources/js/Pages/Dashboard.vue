@@ -11,7 +11,7 @@ defineProps({
         type: Array,
         required: true,
     },
-    featuredGraph: {
+    featuredGraphs: {
         type: Object,
         required: true,
     },
@@ -90,50 +90,53 @@ defineProps({
                             <div>
                                 <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Interface Ether 1 Traffic</h3>
                                 <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                    One featured graph from the Monitoring > Graphs menu.
+                                    Semua graph interface ether 1 dari menu Monitoring > Graphs.
                                 </p>
                             </div>
                             <span
                                 class="rounded-full px-3 py-1 text-xs font-medium"
-                                :class="featuredGraph.meta?.message ? 'border border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'"
+                                :class="featuredGraphs.meta?.message ? 'border border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'"
                             >
-                                {{ featuredGraph.meta?.message ? 'No Graph' : 'Live' }}
+                                {{ featuredGraphs.meta?.message ? 'No Graph' : 'Live' }}
                             </span>
                         </div>
 
-                        <div class="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-inner dark:border-slate-800">
-                            <img
-                                v-if="featuredGraph.graph?.image"
-                                :src="featuredGraph.graph.image"
-                                :alt="featuredGraph.graph.name || 'Interface ether 1 traffic graph'"
-                                class="h-full w-full object-cover"
-                            >
+                        <div class="mt-6 grid gap-6 lg:grid-cols-2">
                             <div
-                                v-else
-                                class="flex min-h-[320px] items-center justify-center px-6 py-10 text-center text-sm text-slate-400"
+                                v-for="graph in featuredGraphs.graphs"
+                                :key="graph.graph_id"
+                                class="flex min-h-[460px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-inner dark:border-slate-800"
                             >
-                                {{ featuredGraph.meta?.message || 'Graph belum tersedia.' }}
-                            </div>
-                        </div>
+                                <div class="border-b border-slate-800 px-4 py-3">
+                                    <p class="text-sm font-semibold text-white">
+                                        {{ graph.name }}
+                                    </p>
+                                    <p class="mt-1 text-xs text-slate-400">
+                                        {{ graph.host }}
+                                    </p>
+                                </div>
 
-                        <div class="mt-4 grid gap-4 sm:grid-cols-3">
-                            <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/80">
-                                <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Graph</p>
-                                <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-white">
-                                    {{ featuredGraph.graph?.name ?? '-' }}
-                                </p>
+                                <div class="flex flex-1 items-center justify-center bg-white p-3 dark:bg-slate-900">
+                                    <img
+                                        v-if="graph.image"
+                                        :src="graph.image"
+                                        :alt="graph.name || 'Interface ether 1 traffic graph'"
+                                        class="h-auto w-full rounded-lg border border-slate-200 object-contain dark:border-slate-700"
+                                    >
+                                    <div
+                                        v-else
+                                        class="flex min-h-[320px] w-full items-center justify-center px-6 py-10 text-center text-sm text-slate-400"
+                                    >
+                                        Graph belum tersedia.
+                                    </div>
+                                </div>
                             </div>
-                            <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/80">
-                                <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Host</p>
-                                <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-white">
-                                    {{ featuredGraph.graph?.host ?? '-' }}
-                                </p>
-                            </div>
-                            <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/80">
-                                <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Size</p>
-                                <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-white">
-                                    {{ featuredGraph.graph?.size ?? '-' }}
-                                </p>
+
+                            <div
+                                v-if="!featuredGraphs.graphs.length"
+                                class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400 lg:col-span-2"
+                            >
+                                {{ featuredGraphs.meta?.message || 'No graph returned from Zabbix.' }}
                             </div>
                         </div>
                     </div>

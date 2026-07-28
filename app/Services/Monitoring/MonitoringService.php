@@ -251,33 +251,29 @@ class MonitoringService
         });
     }
 
-    public function featuredGraph(?int $companyId = null): array
+    public function featuredGraphs(?int $companyId = null): array
     {
-        return $this->remember('featured-graph', $companyId, function () use ($companyId) {
+        return $this->remember('featured-graphs', $companyId, function () use ($companyId) {
             $connection = $this->resolver->resolve($companyId);
 
             if (! $connection) {
                 return [
                     'connection' => $this->connectionPayload(null, true),
-                    'graph' => null,
+                    'graphs' => [],
                     'meta' => ['message' => 'No active Zabbix connection configured.'],
                 ];
             }
 
             $graphs = $this->buildGraphs($connection, null, self::FETCH_LIMIT);
-            $featured = collect($graphs)->first(function (array $graph): bool {
+            $featured = collect($graphs)->filter(function (array $graph): bool {
                 $name = mb_strtolower((string) ($graph['name'] ?? ''));
 
                 return str_contains($name, 'ether 1') && str_contains($name, 'network traffic');
-            });
-
-            if (! $featured) {
-                $featured = collect($graphs)->first();
-            }
+            })->values()->all();
 
             return [
                 'connection' => $this->connectionPayload($connection),
-                'graph' => $featured,
+                'graphs' => $featured,
                 'meta' => $featured
                     ? ['synced_at' => now()->toDateTimeString()]
                     : ['message' => 'No matching network traffic graph found.'],
