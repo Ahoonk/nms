@@ -17,13 +17,11 @@ class DashboardController extends Controller
     ): Response {
         $summary = $summaryService->forCurrentScope($request->user()?->company_id);
         $availability = $monitoring->availability($request->user()?->company_id, [], 1, 5);
-        $featuredGraphs = $monitoring->featuredGraphs($request->user()?->company_id);
 
         return Inertia::render('Dashboard', [
             'summary' => $summary->toArray(),
             'summaryCards' => $summary->cards(),
             'availabilityPreview' => $availability->toArray(),
-            'featuredGraphs' => $featuredGraphs,
         ]);
     }
 }

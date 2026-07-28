@@ -11,10 +11,6 @@ defineProps({
         type: Array,
         required: true,
     },
-    featuredGraphs: {
-        type: Object,
-        required: true,
-    },
     availabilityPreview: {
         type: Object,
         required: true,
@@ -88,55 +84,69 @@ defineProps({
                     <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:col-span-2">
                         <div class="flex items-center justify-between gap-4">
                             <div>
-                                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Interface Ether 1 Traffic</h3>
+                                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Availability Hosts</h3>
                                 <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                    Semua graph interface ether 1 dari menu Monitoring > Graphs.
+                                    Kartu host, status, availability, device, dan site dari menu Monitoring > Availability.
                                 </p>
                             </div>
-                            <span
-                                class="rounded-full px-3 py-1 text-xs font-medium"
-                                :class="featuredGraphs.meta?.message ? 'border border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'"
-                            >
-                                {{ featuredGraphs.meta?.message ? 'No Graph' : 'Live' }}
-                            </span>
                         </div>
 
-                        <div class="mt-6 grid gap-6 lg:grid-cols-2">
+                        <div class="mt-6 grid gap-4 xl:grid-cols-2">
                             <div
-                                v-for="graph in featuredGraphs.graphs"
-                                :key="graph.graph_id"
-                                class="flex min-h-[460px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-inner dark:border-slate-800"
+                                v-for="host in availabilityPreview.items"
+                                :key="host.hostid"
+                                class="flex min-h-[240px] flex-col justify-between rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/50"
                             >
-                                <div class="border-b border-slate-800 px-4 py-3">
-                                    <p class="text-sm font-semibold text-white">
-                                        {{ graph.name }}
-                                    </p>
-                                    <p class="mt-1 text-xs text-slate-400">
-                                        {{ graph.host }}
-                                    </p>
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                                            {{ host.name }}
+                                        </p>
+                                        <p class="truncate text-xs text-slate-500 dark:text-slate-400">
+                                            {{ host.host }}
+                                        </p>
+                                    </div>
+                                    <div class="flex flex-col items-end gap-2">
+                                        <span class="rounded-full px-2.5 py-1 text-[11px] font-medium" :class="host.status_class">
+                                            {{ host.status }}
+                                        </span>
+                                        <span class="rounded-full px-2.5 py-1 text-[11px] font-medium" :class="host.availability_class">
+                                            {{ host.availability }}
+                                        </span>
+                                    </div>
                                 </div>
 
-                                <div class="flex flex-1 items-center justify-center bg-white p-3 dark:bg-slate-900">
-                                    <img
-                                        v-if="graph.image"
-                                        :src="graph.image"
-                                        :alt="graph.name || 'Interface ether 1 traffic graph'"
-                                        class="h-auto w-full rounded-lg border border-slate-200 object-contain dark:border-slate-700"
-                                    >
-                                    <div
-                                        v-else
-                                        class="flex min-h-[320px] w-full items-center justify-center px-6 py-10 text-center text-sm text-slate-400"
-                                    >
-                                        Graph belum tersedia.
+                                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                                    <div class="rounded-xl bg-white p-4 dark:bg-slate-900">
+                                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                            Device
+                                        </p>
+                                        <p class="mt-1 text-sm font-medium text-slate-900 dark:text-white">
+                                            {{ host.device?.hostname ?? '-' }}
+                                        </p>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400">
+                                            {{ host.device?.device_type ?? '-' }}
+                                        </p>
+                                    </div>
+                                    <div class="rounded-xl bg-white p-4 dark:bg-slate-900">
+                                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                            Site
+                                        </p>
+                                        <p class="mt-1 text-sm font-medium text-slate-900 dark:text-white">
+                                            {{ host.site?.name ?? '-' }}
+                                        </p>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400">
+                                            {{ host.site?.company_name ?? 'Global' }}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
 
                             <div
-                                v-if="!featuredGraphs.graphs.length"
-                                class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400 lg:col-span-2"
+                                v-if="!availabilityPreview.items.length"
+                                class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400 xl:col-span-2"
                             >
-                                {{ featuredGraphs.meta?.message || 'No graph returned from Zabbix.' }}
+                                No host data returned from Zabbix.
                             </div>
                         </div>
                     </div>
@@ -175,65 +185,6 @@ defineProps({
                                 <p class="mt-2 text-2xl font-semibold text-rose-600 dark:text-rose-300">
                                     {{ availabilityPreview.summary?.offline ?? 0 }}
                                 </p>
-                            </div>
-                        </div>
-
-                        <div class="mt-5 space-y-3">
-                            <div
-                                v-for="host in availabilityPreview.items"
-                                :key="host.hostid"
-                                class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/60"
-                            >
-                                <div class="flex items-start justify-between gap-3">
-                                    <div class="min-w-0">
-                                        <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">
-                                            {{ host.name }}
-                                        </p>
-                                        <p class="truncate text-xs text-slate-500 dark:text-slate-400">
-                                            {{ host.host }}
-                                        </p>
-                                    </div>
-                                    <div class="flex flex-col items-end gap-2">
-                                        <span class="rounded-full px-2.5 py-1 text-[11px] font-medium" :class="host.status_class">
-                                            {{ host.status }}
-                                        </span>
-                                        <span class="rounded-full px-2.5 py-1 text-[11px] font-medium" :class="host.availability_class">
-                                            {{ host.availability }}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div class="mt-3 grid gap-3 sm:grid-cols-2">
-                                    <div>
-                                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                                            Device
-                                        </p>
-                                        <p class="mt-1 text-sm font-medium text-slate-900 dark:text-white">
-                                            {{ host.device?.hostname ?? '-' }}
-                                        </p>
-                                        <p class="text-xs text-slate-500 dark:text-slate-400">
-                                            {{ host.device?.device_type ?? '-' }}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                                            Site
-                                        </p>
-                                        <p class="mt-1 text-sm font-medium text-slate-900 dark:text-white">
-                                            {{ host.site?.name ?? '-' }}
-                                        </p>
-                                        <p class="text-xs text-slate-500 dark:text-slate-400">
-                                            {{ host.site?.company_name ?? 'Global' }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div
-                                v-if="!availabilityPreview.items.length"
-                                class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400"
-                            >
-                                No host data returned from Zabbix.
                             </div>
                         </div>
                     </div>
