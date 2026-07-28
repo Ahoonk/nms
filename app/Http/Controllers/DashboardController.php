@@ -17,7 +17,8 @@ class DashboardController extends Controller
     ): Response {
         $summary = $summaryService->forCurrentScope($request->user()?->company_id);
         $availability = $monitoring->availability($request->user()?->company_id, [], 1, 20);
-        $telemetryCards = $monitoring->dashboardTelemetry($request->user()?->company_id);
+        $telemetry = $monitoring->dashboardTelemetry($request->user()?->company_id);
+        $telemetryCards = $telemetry['cards'] ?? [];
 
         return Inertia::render('Dashboard', [
             'summary' => $summary->toArray(),
