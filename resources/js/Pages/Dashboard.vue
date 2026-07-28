@@ -169,7 +169,7 @@ defineProps({
 
                         <div class="mt-4 grid gap-3 sm:grid-cols-3">
                             <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/80">
-                                <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Total Hosts</p>
+                                <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Hosts</p>
                                 <p class="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
                                     {{ availabilityPreview.summary?.total ?? 0 }}
                                 </p>
