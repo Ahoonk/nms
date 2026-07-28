@@ -18,16 +18,35 @@ class DeviceRepository extends EloquentRepository implements DeviceRepositoryInt
     {
         return $this->query()
             ->with(['site.company'])
-            ->when($companyId, fn ($query) => $query->whereHas('site', fn ($siteQuery) => $siteQuery->where('company_id', $companyId)))
+            ->when(
+                $companyId,
+                fn ($query) => $query->whereHas(
+                    'site',
+                    fn ($siteQuery) => $siteQuery->where('company_id', $companyId)
+                )
+            )
             ->orderBy('devices.hostname')
             ->paginate($perPage);
+    }
+
+    public function findByZabbixHostId(string $hostId): ?Device
+    {
+        return $this->query()
+            ->where('zabbix_host_id', $hostId)
+            ->first();
     }
 
     public function allByCompany(?int $companyId = null): Collection
     {
         return $this->query()
             ->with(['site.company'])
-            ->when($companyId, fn ($query) => $query->whereHas('site', fn ($siteQuery) => $siteQuery->where('company_id', $companyId)))
+            ->when(
+                $companyId,
+                fn ($query) => $query->whereHas(
+                    'site',
+                    fn ($siteQuery) => $siteQuery->where('company_id', $companyId)
+                )
+            )
             ->orderBy('devices.hostname')
             ->get();
     }

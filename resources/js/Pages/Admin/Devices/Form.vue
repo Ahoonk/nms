@@ -14,12 +14,15 @@ const props = defineProps({
     sites: { type: Array, required: true },
     deviceTypeOptions: { type: Array, required: true },
     statusOptions: { type: Array, required: true },
+    zabbixHosts: { type: Array, default: () => [] },
 });
+console.log('Zabbix Hosts:', props.zabbixHosts);
 
 const form = useForm({
     site_id: props.device?.site_id ?? '',
     device_type: props.device?.device_type ?? 'router',
     hostname: props.device?.hostname ?? '',
+    hostgroup: props.device?.hostgroup ?? '',
     ip: props.device?.ip ?? '',
     vendor: props.device?.vendor ?? '',
     model: props.device?.model ?? '',
@@ -29,6 +32,19 @@ const form = useForm({
     status: props.device?.status ?? 'unknown',
     zabbix_host_id: props.device?.zabbix_host_id ?? '',
 });
+
+const selectHost = () => {
+    const host = props.zabbixHosts.find(
+        h => String(h.hostid) === String(form.zabbix_host_id)
+    );
+
+    if (!host) {
+        return;
+    }
+
+    form.hostname = host.host;
+    form.hostgroup = host.hostgroup;
+};
 
 const submit = () => {
     if (props.mode === 'edit') {
@@ -90,6 +106,31 @@ const submit = () => {
                             <TextInput id="hostname" v-model="form.hostname" class="mt-1 block w-full" required autofocus />
                             <InputError class="mt-2" :message="form.errors.hostname" />
                         </div>
+<div>
+    <InputLabel for="hostgroup" value="Host Group" />
+
+    <TextInput
+        id="hostgroup"
+        v-model="form.hostgroup"
+        class="mt-1 block w-full"
+        readonly
+    />
+
+    <InputError
+        class="mt-2"
+        :message="form.errors.hostgroup"
+    />
+</div>
+                        <div>
+                            <InputLabel for="hostgroup" value="Zabbix Host Group" />
+                            <TextInput
+                                id="hostgroup"
+                                v-model="form.hostgroup"
+                                class="mt-1 block w-full"
+                                placeholder="Contoh: Core Network"
+                            />
+                            <InputError class="mt-2" :message="form.errors.hostgroup" />
+                        </div>
 
                         <div class="grid gap-4 sm:grid-cols-2">
                             <div>
@@ -131,8 +172,29 @@ const submit = () => {
                         </div>
 
                         <div>
-                            <InputLabel for="zabbix_host_id" value="Zabbix Host ID" />
-                            <TextInput id="zabbix_host_id" v-model="form.zabbix_host_id" class="mt-1 block w-full" />
+                            <InputLabel for="zabbix_host_id" value="Zabbix Host" />
+
+<select
+    id="zabbix_host_id"
+    v-model="form.zabbix_host_id"
+    @change="selectHost"
+    class="mt-1 block w-full rounded-xl border-slate-300 bg-white text-slate-900 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+>
+    <option value="">-- Pilih Host Zabbix --</option>
+
+    <option
+        v-for="host in zabbixHosts"
+        :key="host.hostid"
+        :value="host.hostid"
+    >
+        {{ host.host }} ({{ host.hostgroup }})
+    </option>
+</select>
+
+<InputError
+    class="mt-2"
+    :message="form.errors.zabbix_host_id"
+/>
                             <InputError class="mt-2" :message="form.errors.zabbix_host_id" />
                         </div>
 

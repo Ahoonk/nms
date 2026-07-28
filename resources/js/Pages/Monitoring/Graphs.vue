@@ -125,18 +125,23 @@ const goToPage = (page) => {
                             <p class="font-semibold text-slate-900 dark:text-white">{{ graph.name }}</p>
                             <p class="text-sm text-slate-500 dark:text-slate-400">{{ graph.host }} - {{ graph.size }}</p>
                         </div>
-                        <div class="flex h-56 items-center justify-center bg-gradient-to-br from-slate-50 to-sky-50 text-sm text-slate-500 dark:from-slate-950/80 dark:to-slate-900 dark:text-slate-400">
-                            <a
-                                v-if="graph.link"
-                                :href="graph.link"
-                                target="_blank"
-                                rel="noreferrer"
-                                class="rounded-xl bg-sky-600 px-4 py-2 font-semibold text-white transition hover:bg-sky-500"
-                            >
-                                Open in Zabbix
-                            </a>
-                            <span v-else>Graph link not available</span>
-                        </div>
+
+                        <div
+                         class="bg-white dark:bg-slate-900 p-3 flex justify-center"
+                        >
+                         <img
+                             v-if="graph.image"
+                             :src="graph.image"
+                             :alt="graph.name"
+                             class="w-full rounded-lg border"
+                         />
+                         <div
+                             v-else
+                             class="h-56 flex items-center justify-center text-slate-500"
+                         >
+                             Graph belum tersedia
+                         </div>
+                       </div>
                     </div>
                     <div v-if="!items.length" class="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 lg:col-span-2">
                         No graph returned from Zabbix.

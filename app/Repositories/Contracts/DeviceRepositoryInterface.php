@@ -15,6 +15,8 @@ interface DeviceRepositoryInterface
 
     public function find(int $id): ?Device;
 
+    public function findByZabbixHostId(string $hostId): ?Device;
+
     public function create(array $data): Model;
 
     public function update(Model $device, array $data): Model;

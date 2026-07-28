@@ -9,7 +9,13 @@ use App\Http\Controllers\NotificationCenterController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SiteController;
 use App\Http\Controllers\ZabbixConnectionController;
+use App\Http\Controllers\MonitoringGraphController;
 use Illuminate\Support\Facades\Route;
+
+Route::get(
+    '/monitoring/graph/{graph}',
+    [MonitoringGraphController::class, 'show']
+)->name('monitoring.graph.image');
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
@@ -55,3 +61,7 @@ Route::middleware(['auth', 'verified', 'permission:monitoring.view'])
     });
 
 require __DIR__.'/auth.php';
+
+use App\Http\Controllers\WireGuardController;
+
+Route::get('/wireguard/peers', [WireGuardController::class, 'peers']);

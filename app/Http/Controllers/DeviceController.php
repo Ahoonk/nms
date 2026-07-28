@@ -8,9 +8,12 @@ use App\Http\Requests\StoreDeviceRequest;
 use App\Http\Requests\UpdateDeviceRequest;
 use App\Models\Device;
 use App\Models\Site;
+use App\Models\ZabbixConnection;
 use App\Repositories\Contracts\DeviceRepositoryInterface;
 use App\Repositories\Contracts\SiteRepositoryInterface;
 use App\Services\Audit\ActivityLogService;
+use App\Services\Zabbix\ZabbixHostGroupService;
+use App\Services\Zabbix\ZabbixHostService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -22,6 +25,8 @@ class DeviceController extends Controller
     public function __construct(
         private readonly DeviceRepositoryInterface $devices,
         private readonly SiteRepositoryInterface $sites,
+        private readonly ZabbixHostService $zabbixHosts,
+        private readonly ZabbixHostGroupService $hostGroups,
     ) {
         $this->authorizeResource(Device::class, 'device');
     }
@@ -49,6 +54,8 @@ class DeviceController extends Controller
             'sites' => $this->siteOptions($companyId),
             'deviceTypeOptions' => $this->deviceTypeOptions(),
             'statusOptions' => $this->statusOptions(),
+            'zabbixHosts' => $this->zabbixHosts(),
+            'hostGroups' => $this->hostGroupOptions(),
         ]);
     }
 
@@ -86,8 +93,40 @@ class DeviceController extends Controller
             'sites' => $this->siteOptions($companyId),
             'deviceTypeOptions' => $this->deviceTypeOptions(),
             'statusOptions' => $this->statusOptions(),
+            'zabbixHosts' => $this->zabbixHosts(),
+            'hostGroups' => $this->hostGroupOptions(),
         ]);
     }
+
+private function hostGroupOptions(): array
+{
+    $connection = ZabbixConnection::first();
+
+    if (! $connection) {
+        return [];
+    }
+
+    try {
+
+        $response = $this->hostGroups->list($connection, [
+            'output' => ['groupid', 'name'],
+            'sortfield' => 'name',
+        ]);
+
+        //dd($response);
+
+        return collect($response['result'] ?? [])
+            ->map(fn ($group) => [
+                'id' => $group['groupid'],
+                'name' => $group['name'],
+            ])
+            ->values()
+            ->all();
+
+    } catch (\Throwable $e) {
+   // dd($e->getMessage());
+    }
+}
 
     public function update(UpdateDeviceRequest $request, Device $device, ActivityLogService $activityLogs): RedirectResponse
     {
@@ -157,4 +196,41 @@ class DeviceController extends Controller
             ->values()
             ->all();
     }
+
+private function zabbixHosts(): array
+{
+    $connection = ZabbixConnection::first();
+
+    if (! $connection) {
+        return [];
+    }
+
+    try {
+        $response = $this->zabbixHosts->list($connection, [
+            'output' => ['hostid', 'host', 'name'],
+            'selectHostGroups' => ['groupid', 'name'],
+            'sortfield' => 'host',
+        ]);
+
+        return collect($response['result'] ?? [])
+            ->map(function ($host) {
+
+                return [
+                    'hostid' => $host['hostid'],
+                    'host' => $host['host'],
+                    'name' => $host['name'],
+                    'hostgroup' => collect($host['hostgroups'])
+                        ->pluck('name')
+                        ->join(', '),
+                ];
+
+            })
+            ->all();
+
+    } catch (\Throwable $e) {
+report($e);
+
+   // dd($e->getMessage());
+    }
+}
 }

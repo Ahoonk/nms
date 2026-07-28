@@ -15,6 +15,7 @@ use App\Services\Zabbix\ZabbixEventService;
 use App\Services\Zabbix\ZabbixGraphService;
 use App\Services\Zabbix\ZabbixHostService;
 use App\Services\Zabbix\ZabbixProblemService;
+use App\Services\WireGuard\WireGuardService;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
@@ -31,6 +32,7 @@ class MonitoringService
         private readonly ZabbixEventService $events,
         private readonly ZabbixGraphService $graphs,
         private readonly DeviceRepositoryInterface $devices,
+        private readonly WireGuardService $wireguard,
     ) {
     }
 
@@ -300,15 +302,32 @@ class MonitoringService
                 'sortorder' => 'ASC',
                 'limit' => $limit,
             ]);
-        } catch (Throwable) {
-            return [];
+        } catch (Throwable $e) {
+            throw $e;
         }
 
         return collect($response['result'] ?? [])
             ->map(function (array $host) use ($deviceIndex): array {
-                $availability = $this->availabilityMeta((int) ($host['available'] ?? 0));
-                $status = $this->hostStatusMeta((int) ($host['status'] ?? 0));
-                $device = $this->matchDeviceToHost($host, $deviceIndex);
+
+    $mainInterface = collect($host['interfaces'] ?? [])
+        ->first(fn ($i) => (int) ($i['main'] ?? 0) === 1);
+
+    if (!$mainInterface) {
+        $mainInterface = $host['interfaces'][0] ?? [];
+    }
+
+    logger()->info([
+        'host' => $host['name'],
+        'host_available' => $host['available'] ?? null,
+        'interface_available' => $mainInterface['available'] ?? null,
+    ]);
+
+    $availability = $this->availabilityMeta(
+        (int) ($mainInterface['available'] ?? 0)
+    );
+
+    $status = $this->hostStatusMeta((int) ($host['status'] ?? 0));
+    $device = $this->matchDeviceToHost($host, $deviceIndex);
 
                 return [
                     'hostid' => Arr::get($host, 'hostid'),
@@ -347,13 +366,13 @@ class MonitoringService
             $response = $this->problems->list($connection, [
                 'output' => ['eventid', 'objectid', 'clock', 'name', 'severity', 'acknowledged', 'r_eventid'],
                 'selectTags' => 'extend',
-                'sortfield' => ['severity', 'clock'],
+                'sortfield' => 'eventid',
                 'sortorder' => 'DESC',
                 'recent' => true,
                 'limit' => $limit,
             ]);
-        } catch (Throwable) {
-            return [];
+        } catch (Throwable $e) {
+            throw $e;
         }
 
         return collect($response['result'] ?? [])
@@ -389,8 +408,8 @@ class MonitoringService
                 'sortorder' => 'DESC',
                 'limit' => $limit,
             ]);
-        } catch (Throwable) {
-            return [];
+        } catch (Throwable $e) {
+            throw $e;
         }
 
         return collect($response['result'] ?? [])
@@ -443,12 +462,24 @@ class MonitoringService
                 $graphId = Arr::get($graph, 'graphid');
 
                 return [
-                    'graph_id' => $graphId,
-                    'name' => Arr::get($graph, 'name', '-'),
-                    'host' => $host,
-                    'link' => $this->graphLink($connection, $graphId),
-                    'size' => sprintf('%sx%s', Arr::get($graph, 'width', 0), Arr::get($graph, 'height', 0)),
-                ];
+    'graph_id' => $graphId,
+    'name' => Arr::get($graph, 'name', '-'),
+    'host' => $host,
+
+    // link ke halaman graph Zabbix
+    'link' => $this->graphLink($connection, $graphId),
+
+    // endpoint image Laravel
+    'image' => route('monitoring.graph.image', [
+        'graph' => $graphId,
+    ]),
+
+    'size' => sprintf(
+        '%sx%s',
+        Arr::get($graph, 'width', 0),
+        Arr::get($graph, 'height', 0)
+    ),
+];
             })
             ->values()
             ->all();
@@ -782,4 +813,61 @@ class MonitoringService
             'uptime' => $uptime,
         ];
     }
+
+private function buildWireGuardPeers(): array
+{
+    try {
+        $peers = $this->wireguard->peers();
+    } catch (\Throwable $e) {
+        return [];
+    }
+
+    return collect($peers)
+        ->map(function ($peer) {
+
+            $lastHandshake = (int)$peer['last_handshake'];
+
+            return [
+
+                'interface' => $peer['interface'],
+
+                'public_key' => substr($peer['public_key'],0,12).'...',
+
+                'endpoint' => $peer['endpoint'],
+
+                'allowed_ips' => $peer['allowed_ips'],
+
+                'status' => $lastHandshake > (time()-180)
+                    ? 'Online'
+                    : 'Offline',
+
+                'rx' => $this->formatBytes((int)$peer['rx_bytes']),
+
+                'tx' => $this->formatBytes((int)$peer['tx_bytes']),
+
+                'last_seen' => $lastHandshake
+                    ? Carbon::createFromTimestamp($lastHandshake)->diffForHumans()
+                    : 'Never',
+            ];
+        })
+        ->values()
+        ->all();
+}
+
+private function formatBytes(int $bytes): string
+{
+    if ($bytes >= 1073741824) {
+        return round($bytes / 1073741824,2).' GB';
+    }
+
+    if ($bytes >= 1048576) {
+        return round($bytes / 1048576,2).' MB';
+    }
+
+    if ($bytes >= 1024) {
+        return round($bytes / 1024,2).' KB';
+    }
+
+    return $bytes.' B';
+}
 }

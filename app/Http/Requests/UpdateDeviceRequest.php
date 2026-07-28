@@ -21,6 +21,7 @@ class UpdateDeviceRequest extends FormRequest
             'site_id' => ['required', 'exists:sites,id'],
             'device_type' => ['required', Rule::enum(DeviceType::class)],
             'hostname' => ['required', 'string', 'max:255'],
+            'hostgroup' => ['nullable', 'string', 'max:255'],
             'ip' => ['required', 'ip'],
             'vendor' => ['nullable', 'string', 'max:255'],
             'model' => ['nullable', 'string', 'max:255'],

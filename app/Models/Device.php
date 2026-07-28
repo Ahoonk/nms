@@ -16,6 +16,7 @@ class Device extends Model
         'site_id',
         'device_type',
         'hostname',
+        'hostgroup',
         'ip',
         'vendor',
         'model',
