@@ -668,6 +668,7 @@ class MonitoringService
             $payload = [
                 'id' => $device->id,
                 'hostname' => $device->hostname,
+                'ip' => $device->ip,
                 'device_type' => $device->device_type instanceof \BackedEnum ? $device->device_type->value : (string) $device->device_type,
                 'status' => $device->status instanceof \BackedEnum ? $device->status->value : (string) $device->status,
                 'zabbix_host_id' => $device->zabbix_host_id,
@@ -685,6 +686,11 @@ class MonitoringService
 
             if (filled($device->hostname)) {
                 $byHostname[mb_strtolower($device->hostname)] = $payload;
+                $byHostname[$this->normalizeLookupKey($device->hostname)] = $payload;
+            }
+
+            if (filled($device->ip)) {
+                $byHostname[$this->normalizeLookupKey($device->ip)] = $payload;
             }
         }
 
@@ -698,10 +704,21 @@ class MonitoringService
     {
         $hostId = (string) Arr::get($host, 'hostid', '');
         $hostName = mb_strtolower((string) (Arr::get($host, 'host') ?? Arr::get($host, 'name') ?? ''));
+        $normalizedHostName = $this->normalizeLookupKey($hostName);
+        $interfaces = Arr::get($host, 'interfaces', []);
+        $firstInterface = Arr::first($interfaces);
+        $hostIp = is_array($firstInterface) ? (string) Arr::get($firstInterface, 'ip', '') : '';
 
         return $deviceIndex['byHostId'][$hostId]
             ?? $deviceIndex['byHostname'][$hostName]
+            ?? $deviceIndex['byHostname'][$normalizedHostName]
+            ?? ($hostIp ? ($deviceIndex['byHostname'][$this->normalizeLookupKey($hostIp)] ?? null) : null)
             ?? null;
+    }
+
+    private function normalizeLookupKey(string $value): string
+    {
+        return mb_strtolower(preg_replace('/[^a-z0-9]+/i', '', trim($value)) ?? '');
     }
 
     private function graphLink(ZabbixConnection $connection, mixed $graphId): ?string
