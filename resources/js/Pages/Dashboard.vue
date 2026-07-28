@@ -11,6 +11,10 @@ defineProps({
         type: Array,
         required: true,
     },
+    telemetryCards: {
+        type: Array,
+        required: true,
+    },
     availabilityPreview: {
         type: Object,
         required: true,
@@ -62,21 +66,14 @@ defineProps({
                 </div>
 
                 <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    <div class="rounded-2xl border border-slate-200 bg-slate-950 p-5 text-white shadow-sm dark:border-slate-800">
-                        <p class="text-sm text-slate-400">CPU</p>
-                        <p class="mt-2 text-2xl font-semibold">Ready for Zabbix</p>
-                    </div>
-                    <div class="rounded-2xl border border-slate-200 bg-slate-950 p-5 text-white shadow-sm dark:border-slate-800">
-                        <p class="text-sm text-slate-400">RAM</p>
-                        <p class="mt-2 text-2xl font-semibold">Ready for Zabbix</p>
-                    </div>
-                    <div class="rounded-2xl border border-slate-200 bg-slate-950 p-5 text-white shadow-sm dark:border-slate-800">
-                        <p class="text-sm text-slate-400">Bandwidth</p>
-                        <p class="mt-2 text-2xl font-semibold">Ready for Zabbix</p>
-                    </div>
-                    <div class="rounded-2xl border border-slate-200 bg-slate-950 p-5 text-white shadow-sm dark:border-slate-800">
-                        <p class="text-sm text-slate-400">Availability</p>
-                        <p class="mt-2 text-2xl font-semibold">Ready for Zabbix</p>
+                    <div
+                        v-for="card in telemetryCards"
+                        :key="card.label"
+                        class="rounded-2xl border border-slate-200 bg-slate-950 p-5 text-white shadow-sm dark:border-slate-800"
+                    >
+                        <p class="text-sm text-slate-400">{{ card.label }}</p>
+                        <p class="mt-2 text-2xl font-semibold">{{ card.value }}</p>
+                        <p class="mt-3 text-sm text-slate-400">{{ card.hint }}</p>
                     </div>
                 </div>
 

@@ -251,6 +251,29 @@ class MonitoringService
         });
     }
 
+    public function dashboardTelemetry(?int $companyId = null): array
+    {
+        return $this->remember('dashboard-telemetry', $companyId, function () use ($companyId) {
+            $connection = $this->resolver->resolve($companyId);
+
+            if (! $connection) {
+                return [
+                    'connection' => $this->connectionPayload(null, true),
+                    'cards' => $this->defaultTelemetryCards('No active Zabbix connection configured.'),
+                    'meta' => ['message' => 'No active Zabbix connection configured.'],
+                ];
+            }
+
+            $hosts = $this->buildHosts($connection, self::FETCH_LIMIT, $companyId);
+
+            return [
+                'connection' => $this->connectionPayload($connection),
+                'cards' => $this->aggregateTelemetryCards($hosts),
+                'meta' => ['synced_at' => now()->toDateTimeString()],
+            ];
+        });
+    }
+
     public function featuredGraphs(?int $companyId = null): array
     {
         return $this->remember('featured-graphs', $companyId, function () use ($companyId) {
@@ -374,6 +397,7 @@ class MonitoringService
                     'mapped_device' => (bool) $device,
                     'device' => $device,
                     'site' => $device['site'] ?? null,
+                    'telemetry' => $this->hostTelemetry($host),
                     'latest_data' => collect(Arr::get($host, 'items', []))
                         ->take(3)
                         ->map(fn (array $item): array => [
@@ -698,6 +722,149 @@ class MonitoringService
             'byHostId' => $byHostId,
             'byHostname' => $byHostname,
         ];
+    }
+
+    private function hostTelemetry(array $host): array
+    {
+        $items = collect(Arr::get($host, 'items', []))->values();
+
+        return [
+            'cpu' => $this->telemetryFromItem($this->findTelemetryItem($items->all(), [
+                'system.cpu.util',
+                'cpu utilization',
+                'cpu',
+            ])),
+            'ram' => $this->telemetryFromItem($this->findTelemetryItem($items->all(), [
+                'vm.memory.size',
+                'memory utilization',
+                'used memory',
+                'memory',
+                'ram',
+            ])),
+            'bandwidth' => $this->telemetryFromItem($this->findTelemetryItem($items->all(), [
+                'interface traffic',
+                'network traffic',
+                'net.if',
+                'bandwidth',
+                'traffic',
+            ])),
+        ];
+    }
+
+    private function findTelemetryItem(array $items, array $patterns): ?array
+    {
+        foreach ($patterns as $pattern) {
+            $needle = mb_strtolower(trim($pattern));
+
+            foreach ($items as $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+
+                $haystack = mb_strtolower(implode(' ', [
+                    (string) Arr::get($item, 'name', ''),
+                    (string) Arr::get($item, 'key_', ''),
+                ]));
+
+                if ($needle !== '' && str_contains($haystack, $needle)) {
+                    return $item;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function telemetryFromItem(?array $item): ?array
+    {
+        if (! $item) {
+            return null;
+        }
+
+        $value = Arr::get($item, 'lastvalue');
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return [
+            'label' => Arr::get($item, 'name', '-'),
+            'key' => Arr::get($item, 'key_'),
+            'value' => $value,
+            'unit' => Arr::get($item, 'units'),
+            'numeric' => is_numeric($value) ? (float) $value : null,
+        ];
+    }
+
+    private function aggregateTelemetryCards(array $hosts): array
+    {
+        $metrics = [
+            'cpu' => ['label' => 'CPU', 'unit' => '%', 'empty' => 'Awaiting live telemetry'],
+            'ram' => ['label' => 'RAM', 'unit' => '%', 'empty' => 'Awaiting live telemetry'],
+            'bandwidth' => ['label' => 'Bandwidth', 'unit' => '', 'empty' => 'Awaiting live telemetry'],
+        ];
+
+        $cards = [];
+
+        foreach ($metrics as $key => $config) {
+            $samples = collect($hosts)
+                ->map(fn (array $host): ?array => Arr::get($host, 'telemetry.' . $key))
+                ->filter(fn ($sample): bool => is_array($sample) && array_key_exists('numeric', $sample) && $sample['numeric'] !== null)
+                ->values();
+
+            if ($samples->isEmpty()) {
+                $cards[] = [
+                    'label' => $config['label'],
+                    'value' => 'N/A',
+                    'hint' => $config['empty'],
+                ];
+                continue;
+            }
+
+            $average = round($samples->avg('numeric'), 2);
+            $cards[] = [
+                'label' => $config['label'],
+                'value' => $this->formatTelemetryValue($average, $config['unit']),
+                'hint' => sprintf('Avg from %d hosts', $samples->count()),
+            ];
+        }
+
+        $cards[] = [
+            'label' => 'Availability',
+            'value' => sprintf('%s%%', $this->availabilitySummaryFromCounts(
+                collect($hosts)->filter(fn (array $host): bool => ($host['availability'] ?? '') === 'Online')->count(),
+                collect($hosts)->filter(fn (array $host): bool => ($host['availability'] ?? '') === 'Offline')->count(),
+                collect($hosts)->filter(fn (array $host): bool => ! in_array($host['availability'] ?? '', ['Online', 'Offline'], true))->count(),
+            )['uptime']),
+            'hint' => 'Derived from Zabbix host availability',
+        ];
+
+        return $cards;
+    }
+
+    private function defaultTelemetryCards(string $hint): array
+    {
+        return [
+            ['label' => 'CPU', 'value' => 'N/A', 'hint' => $hint],
+            ['label' => 'RAM', 'value' => 'N/A', 'hint' => $hint],
+            ['label' => 'Bandwidth', 'value' => 'N/A', 'hint' => $hint],
+            ['label' => 'Availability', 'value' => '0%', 'hint' => $hint],
+        ];
+    }
+
+    private function formatTelemetryValue(float|int $value, string $unit = ''): string
+    {
+        $unit = trim($unit);
+
+        if ($unit === '%' || $unit === 'percent') {
+            return rtrim(rtrim(number_format((float) $value, 2, '.', ''), '0'), '.') . '%';
+        }
+
+        if ($unit === '') {
+            return rtrim(rtrim(number_format((float) $value, 2, '.', ''), '0'), '.');
+        }
+
+        return rtrim(rtrim(number_format((float) $value, 2, '.', ''), '0'), '.') . ' ' . $unit;
     }
 
     private function matchDeviceToHost(array $host, array $deviceIndex): ?array
