@@ -251,6 +251,40 @@ class MonitoringService
         });
     }
 
+    public function featuredGraph(?int $companyId = null): array
+    {
+        return $this->remember('featured-graph', $companyId, function () use ($companyId) {
+            $connection = $this->resolver->resolve($companyId);
+
+            if (! $connection) {
+                return [
+                    'connection' => $this->connectionPayload(null, true),
+                    'graph' => null,
+                    'meta' => ['message' => 'No active Zabbix connection configured.'],
+                ];
+            }
+
+            $graphs = $this->buildGraphs($connection, null, self::FETCH_LIMIT);
+            $featured = collect($graphs)->first(function (array $graph): bool {
+                $name = mb_strtolower((string) ($graph['name'] ?? ''));
+
+                return str_contains($name, 'ether 1') && str_contains($name, 'network traffic');
+            });
+
+            if (! $featured) {
+                $featured = collect($graphs)->first();
+            }
+
+            return [
+                'connection' => $this->connectionPayload($connection),
+                'graph' => $featured,
+                'meta' => $featured
+                    ? ['synced_at' => now()->toDateTimeString()]
+                    : ['message' => 'No matching network traffic graph found.'],
+            ];
+        });
+    }
+
     private function remember(string $key, ?int $companyId, callable $callback): mixed
     {
         return Cache::remember(

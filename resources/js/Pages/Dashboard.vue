@@ -11,6 +11,10 @@ defineProps({
         type: Array,
         required: true,
     },
+    featuredGraph: {
+        type: Object,
+        required: true,
+    },
     availabilityPreview: {
         type: Object,
         required: true,
@@ -84,32 +88,52 @@ defineProps({
                     <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:col-span-2">
                         <div class="flex items-center justify-between gap-4">
                             <div>
-                                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Monitoring Pipeline</h3>
+                                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Interface Ether 1 Traffic</h3>
                                 <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                    User -> Laravel Dashboard -> Service Layer -> Repository -> Zabbix API -> Zabbix Server
+                                    One featured graph from the Monitoring > Graphs menu.
                                 </p>
                             </div>
-                            <span class="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                                Ready
+                            <span
+                                class="rounded-full px-3 py-1 text-xs font-medium"
+                                :class="featuredGraph.meta?.message ? 'border border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'"
+                            >
+                                {{ featuredGraph.meta?.message ? 'No Graph' : 'Live' }}
                             </span>
                         </div>
 
-                        <div class="mt-6 grid gap-4 sm:grid-cols-2">
+                        <div class="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-inner dark:border-slate-800">
+                            <img
+                                v-if="featuredGraph.graph?.image"
+                                :src="featuredGraph.graph.image"
+                                :alt="featuredGraph.graph.name || 'Interface ether 1 traffic graph'"
+                                class="h-full w-full object-cover"
+                            >
+                            <div
+                                v-else
+                                class="flex min-h-[320px] items-center justify-center px-6 py-10 text-center text-sm text-slate-400"
+                            >
+                                {{ featuredGraph.meta?.message || 'Graph belum tersedia.' }}
+                            </div>
+                        </div>
+
+                        <div class="mt-4 grid gap-4 sm:grid-cols-3">
                             <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/80">
-                                <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Auth</p>
-                                <p class="mt-2 text-base font-semibold text-slate-900 dark:text-white">Laravel Breeze + Inertia + Vue 3</p>
+                                <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Graph</p>
+                                <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-white">
+                                    {{ featuredGraph.graph?.name ?? '-' }}
+                                </p>
                             </div>
                             <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/80">
-                                <p class="text-sm font-medium text-slate-500 dark:text-slate-400">RBAC</p>
-                                <p class="mt-2 text-base font-semibold text-slate-900 dark:text-white">Spatie Permission with 4 roles</p>
+                                <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Host</p>
+                                <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-white">
+                                    {{ featuredGraph.graph?.host ?? '-' }}
+                                </p>
                             </div>
                             <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/80">
-                                <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Monitoring Engine</p>
-                                <p class="mt-2 text-base font-semibold text-slate-900 dark:text-white">Zabbix API only, no direct DB access</p>
-                            </div>
-                            <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/80">
-                                <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Scope</p>
-                                <p class="mt-2 text-base font-semibold text-slate-900 dark:text-white">100 company, 5.000 site, 50.000 device</p>
+                                <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Size</p>
+                                <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-white">
+                                    {{ featuredGraph.graph?.size ?? '-' }}
+                                </p>
                             </div>
                         </div>
                     </div>
