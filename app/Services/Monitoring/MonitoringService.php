@@ -375,9 +375,18 @@ class MonitoringService
         'interface_available' => $mainInterface['available'] ?? null,
     ]);
 
-    $availability = $this->availabilityMeta(
-        (int) ($mainInterface['available'] ?? 0)
-    );
+    $icmpItem = collect($host['items'] ?? [])
+        ->first(fn (array $item) => ($item['key_'] ?? '') === 'icmpping');
+
+    if ($icmpItem && isset($icmpItem['lastvalue'])) {
+        $availability = ((int) $icmpItem['lastvalue'] === 1)
+            ? $this->availabilityMeta(1)
+            : $this->availabilityMeta(2);
+    } else {
+        $availability = $this->availabilityMeta(
+            (int) ($mainInterface['available'] ?? 0)
+        );
+    }
 
     $status = $this->hostStatusMeta((int) ($host['status'] ?? 0));
     $device = $this->matchDeviceToHost($host, $deviceIndex);
