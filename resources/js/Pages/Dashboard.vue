@@ -40,15 +40,23 @@ const availabilityCompanies = computed(() => {
             groups.set(companyName, {
                 name: companyName,
                 hosts: [],
-                activeHosts: [],
+                onlineHosts: [],
+                offlineHosts: [],
+                unknownHosts: [],
             });
         }
 
         const group = groups.get(companyName);
         group.hosts.push(host);
 
-        if ((host.availability ?? '').toLowerCase() === 'online') {
-            group.activeHosts.push(host);
+        const availability = (host.availability ?? '').toLowerCase();
+
+        if (availability === 'online') {
+            group.onlineHosts.push(host);
+        } else if (availability === 'offline') {
+            group.offlineHosts.push(host);
+        } else {
+            group.unknownHosts.push(host);
         }
     }
 
@@ -72,7 +80,7 @@ watch(
         }
 
         if (!groups.some((group) => group.name === selectedCompany.value)) {
-            selectedCompany.value = groups.find((group) => group.activeHosts.length > 0)?.name ?? groups[0].name;
+            selectedCompany.value = groups.find((group) => group.hosts.length > 0)?.name ?? groups[0].name;
         }
     },
     { immediate: true },
@@ -161,17 +169,17 @@ watch(
                                                 {{ company.name }}
                                             </p>
                                             <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                                {{ company.activeHosts.length }} active host{{ company.activeHosts.length === 1 ? '' : 's' }} of {{ company.hosts.length }}
+                                                {{ company.onlineHosts.length }} online, {{ company.offlineHosts.length }} offline, {{ company.unknownHosts.length }} unknown
                                             </p>
                                         </div>
-                                        <span class="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
-                                            {{ company.activeHosts.length }}
+                                        <span class="rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                            {{ company.hosts.length }}
                                         </span>
                                     </div>
 
                                     <div class="mt-3 flex flex-wrap gap-2">
                                         <span
-                                            v-for="host in company.activeHosts.slice(0, 3)"
+                                            v-for="host in company.hosts.slice(0, 3)"
                                             :key="host.hostid"
                                             class="rounded-full px-2.5 py-1 text-[11px] font-medium"
                                             :class="host.availability_class"
@@ -179,10 +187,10 @@ watch(
                                             {{ host.name }}
                                         </span>
                                         <span
-                                            v-if="company.activeHosts.length > 3"
+                                            v-if="company.hosts.length > 3"
                                             class="rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
                                         >
-                                            +{{ company.activeHosts.length - 3 }}
+                                            +{{ company.hosts.length - 3 }}
                                         </span>
                                     </div>
                                 </button>
@@ -202,7 +210,7 @@ watch(
                                             {{ selectedCompanyData?.name ?? 'Select a company' }}
                                         </h4>
                                         <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                            {{ selectedCompanyData ? `${selectedCompanyData.activeHosts.length} host(s) aktif tersedia` : 'Klik company di sebelah kiri untuk melihat host aktif.' }}
+                                            {{ selectedCompanyData ? `${selectedCompanyData.hosts.length} host(s) tersedia` : 'Klik company di sebelah kiri untuk melihat host.' }}
                                         </p>
                                     </div>
                                     <span class="rounded-full bg-slate-200 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
@@ -212,11 +220,11 @@ watch(
 
                                 <div class="mt-5 space-y-2">
                                     <button
-                                        v-for="host in selectedCompanyData?.activeHosts ?? []"
+                                        v-for="host in selectedCompanyData?.hosts ?? []"
                                         :key="host.hostid"
                                         type="button"
                                         class="flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left text-sm transition hover:-translate-y-0.5 hover:shadow-sm"
-                                        :class="host.availability === 'Online' ? 'border-emerald-200 bg-emerald-500/10 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300' : 'border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200'"
+                                        :class="host.availability === 'Online' ? 'border-emerald-200 bg-emerald-500/10 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300' : host.availability === 'Offline' ? 'border-rose-200 bg-rose-500/10 text-rose-700 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-300' : 'border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200'"
                                     >
                                         <div class="min-w-0">
                                             <p class="truncate font-medium text-slate-900 dark:text-white">
@@ -228,7 +236,7 @@ watch(
                                         </div>
                                         <div class="text-right">
                                             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                                                IP Address
+                                                {{ host.availability }}
                                             </p>
                                             <p class="mt-0.5 text-sm font-medium text-slate-900 dark:text-white">
                                                 {{ host.ip || '-' }}
@@ -238,10 +246,10 @@ watch(
                                 </div>
 
                                 <div
-                                    v-if="selectedCompanyData && !selectedCompanyData.activeHosts.length"
+                                    v-if="selectedCompanyData && !selectedCompanyData.hosts.length"
                                     class="mt-5 rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400"
                                 >
-                                    Tidak ada host aktif untuk company ini.
+                                    Tidak ada host untuk company ini.
                                 </div>
                             </div>
                         </div>
