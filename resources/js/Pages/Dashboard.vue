@@ -20,9 +20,13 @@ const props = defineProps({
         type: Object,
         required: true,
     },
+    latestEvents: {
+        type: Object,
+        required: true,
+    },
 });
 
-const { summary, summaryCards, telemetryCards, availabilityPreview } = toRefs(props);
+const { summary, summaryCards, telemetryCards, availabilityPreview, latestEvents } = toRefs(props);
 
 const selectedCompany = ref('');
 
@@ -246,37 +250,59 @@ watch(
                     <div class="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900/50">
                         <div class="flex items-start justify-between gap-4">
                             <div>
-                                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Hosts</h3>
+                                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Latest Events</h3>
                                 <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                    Daftar host aktif yang dikelompokkan berdasarkan company.
+                                    Highlight event terbaru dari menu Monitoring > Events.
                                 </p>
                             </div>
                             <span
                                 class="rounded-full px-3 py-1 text-xs font-medium"
-                                :class="availabilityPreview.meta?.message ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'"
+                                :class="latestEvents.meta?.message ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'"
                             >
-                                {{ availabilityPreview.meta?.message ? 'No Connection' : 'Live' }}
+                                {{ latestEvents.meta?.message ? 'No Connection' : 'Live' }}
                             </span>
                         </div>
 
-                        <div class="mt-4 grid gap-3 sm:grid-cols-3">
-                            <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/80">
-                                <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Hosts</p>
-                                <p class="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
-                                    {{ availabilityPreview.summary?.total ?? 0 }}
-                                </p>
+                        <div class="mt-4 space-y-3">
+                            <div
+                                v-for="event in latestEvents.items"
+                                :key="event.event_id"
+                                class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60"
+                            >
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                                            {{ event.name }}
+                                        </p>
+                                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                            {{ event.clock_label }}
+                                        </p>
+                                    </div>
+                                    <div class="flex flex-col items-end gap-2">
+                                        <span class="rounded-full px-2.5 py-1 text-[11px] font-medium" :class="event.type_class">
+                                            {{ event.type }}
+                                        </span>
+                                        <span class="rounded-full px-2.5 py-1 text-[11px] font-medium" :class="event.severity_class">
+                                            {{ event.severity }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3 flex items-center justify-between gap-3">
+                                    <p class="truncate text-sm text-slate-600 dark:text-slate-300">
+                                        {{ event.message }}
+                                    </p>
+                                    <span class="rounded-full px-2.5 py-1 text-[11px] font-medium" :class="event.status_class">
+                                        {{ event.status }}
+                                    </span>
+                                </div>
                             </div>
-                            <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/80">
-                                <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Online</p>
-                                <p class="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-300">
-                                    {{ availabilityPreview.summary?.online ?? 0 }}
-                                </p>
-                            </div>
-                            <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/80">
-                                <p class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Offline</p>
-                                <p class="mt-2 text-2xl font-semibold text-rose-600 dark:text-rose-300">
-                                    {{ availabilityPreview.summary?.offline ?? 0 }}
-                                </p>
+
+                            <div
+                                v-if="!latestEvents.items.length"
+                                class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400"
+                            >
+                                No recent event found.
                             </div>
                         </div>
                     </div>
