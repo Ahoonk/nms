@@ -198,7 +198,7 @@ watch(
                                             {{ selectedCompanyData?.name ?? 'Select a company' }}
                                         </h4>
                                         <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                            {{ selectedCompanyData ? `${selectedCompanyData.activeHosts.length} active host(s) ready to monitor` : 'Klik company di sebelah kiri untuk melihat host aktif.' }}
+                                            {{ selectedCompanyData ? `${selectedCompanyData.activeHosts.length} host(s) aktif tersedia` : 'Klik company di sebelah kiri untuk melihat host aktif.' }}
                                         </p>
                                     </div>
                                     <span class="rounded-full bg-slate-200 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
@@ -206,24 +206,30 @@ watch(
                                     </span>
                                 </div>
 
-                                <div class="mt-5 flex flex-wrap gap-2">
+                                <div class="mt-5 space-y-2">
                                     <button
                                         v-for="host in selectedCompanyData?.activeHosts ?? []"
                                         :key="host.hostid"
                                         type="button"
-                                        class="group inline-flex items-center gap-2 rounded-full border px-3 py-2 text-left text-sm transition hover:-translate-y-0.5 hover:shadow-sm"
+                                        class="flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left text-sm transition hover:-translate-y-0.5 hover:shadow-sm"
                                         :class="host.availability === 'Online' ? 'border-emerald-200 bg-emerald-500/10 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300' : 'border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200'"
                                     >
-                                        <span
-                                            class="h-2.5 w-2.5 rounded-full"
-                                            :class="host.availability === 'Online' ? 'bg-emerald-500' : 'bg-slate-400'"
-                                        />
-                                        <span class="max-w-[14rem] truncate font-medium">
-                                            {{ host.name }}
-                                        </span>
-                                        <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide" :class="host.status_class">
-                                            {{ host.status }}
-                                        </span>
+                                        <div class="min-w-0">
+                                            <p class="truncate font-medium text-slate-900 dark:text-white">
+                                                {{ host.name }}
+                                            </p>
+                                            <p class="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+                                                {{ host.host }}
+                                            </p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                                IP Address
+                                            </p>
+                                            <p class="mt-0.5 text-sm font-medium text-slate-900 dark:text-white">
+                                                {{ host.ip || '-' }}
+                                            </p>
+                                        </div>
                                     </button>
                                 </div>
 
@@ -240,9 +246,9 @@ watch(
                     <div class="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900/50">
                         <div class="flex items-start justify-between gap-4">
                             <div>
-                                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Availability Preview</h3>
+                                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Hosts</h3>
                                 <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                    Snapshot host, status availability, dan device dari menu Monitoring.
+                                    Daftar host aktif yang dikelompokkan berdasarkan company.
                                 </p>
                             </div>
                             <span
