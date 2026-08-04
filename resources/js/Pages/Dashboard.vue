@@ -20,51 +20,22 @@ const props = defineProps({
         type: Object,
         required: true,
     },
+    companyAvailability: {
+        type: Array,
+        required: true,
+    },
     latestEvents: {
         type: Object,
         required: true,
     },
 });
 
-const { summary, summaryCards, telemetryCards, availabilityPreview, latestEvents } = toRefs(props);
+const { summary, summaryCards, telemetryCards, availabilityPreview, companyAvailability, latestEvents } = toRefs(props);
 
 const selectedCompany = ref('');
 
-const availabilityCompanies = computed(() => {
-    const groups = new Map();
-
-    for (const host of availabilityPreview.value?.items ?? []) {
-        const companyName = host.site?.company_name?.trim() || 'Global';
-
-        if (!groups.has(companyName)) {
-            groups.set(companyName, {
-                name: companyName,
-                hosts: [],
-                onlineHosts: [],
-                offlineHosts: [],
-                unknownHosts: [],
-            });
-        }
-
-        const group = groups.get(companyName);
-        group.hosts.push(host);
-
-        const availability = (host.availability ?? '').toLowerCase();
-
-        if (availability === 'online') {
-            group.onlineHosts.push(host);
-        } else if (availability === 'offline') {
-            group.offlineHosts.push(host);
-        } else {
-            group.unknownHosts.push(host);
-        }
-    }
-
-    return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name));
-});
-
 const selectedCompanyData = computed(() => {
-    return availabilityCompanies.value.find((group) => group.name === selectedCompany.value) ?? availabilityCompanies.value[0] ?? null;
+    return companyAvailability.value.find((group) => group.name === selectedCompany.value) ?? companyAvailability.value[0] ?? null;
 });
 
 const selectCompany = (name) => {
@@ -72,7 +43,7 @@ const selectCompany = (name) => {
 };
 
 watch(
-    availabilityCompanies,
+    companyAvailability,
     (groups) => {
         if (!groups.length) {
             selectedCompany.value = '';
@@ -156,7 +127,7 @@ watch(
                         <div class="mt-6 grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
                             <div class="space-y-3">
                                 <button
-                                    v-for="company in availabilityCompanies"
+                                    v-for="company in companyAvailability"
                                     :key="company.name"
                                     type="button"
                                     class="w-full rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md"
@@ -169,18 +140,18 @@ watch(
                                                 {{ company.name }}
                                             </p>
                                             <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                                {{ company.onlineHosts.length }} online, {{ company.offlineHosts.length }} offline, {{ company.unknownHosts.length }} unknown
+                                                {{ company.onlineCount }} online, {{ company.offlineCount }} offline, {{ company.unknownCount }} unknown
                                             </p>
                                         </div>
                                         <span class="rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                            {{ company.hosts.length }}
+                                            {{ company.totalCount }}
                                         </span>
                                     </div>
 
                                     <div class="mt-3 flex flex-wrap gap-2">
                                         <span
                                             v-for="host in company.hosts.slice(0, 3)"
-                                            :key="host.hostid"
+                                            :key="host.device_id"
                                             class="rounded-full px-2.5 py-1 text-[11px] font-medium"
                                             :class="host.availability_class"
                                         >
@@ -196,7 +167,7 @@ watch(
                                 </button>
 
                                 <div
-                                    v-if="!availabilityCompanies.length"
+                                    v-if="!companyAvailability.length"
                                     class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400"
                                 >
                                     No company host data returned from Zabbix.
@@ -214,14 +185,14 @@ watch(
                                         </p>
                                     </div>
                                     <span class="rounded-full bg-slate-200 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                        {{ selectedCompanyData?.hosts.length ?? 0 }} total
+                                        {{ selectedCompanyData?.totalCount ?? 0 }} total
                                     </span>
                                 </div>
 
                                 <div class="mt-5 space-y-2">
                                     <button
                                         v-for="host in selectedCompanyData?.hosts ?? []"
-                                        :key="host.hostid"
+                                        :key="host.device_id"
                                         type="button"
                                         class="flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left text-sm transition hover:-translate-y-0.5 hover:shadow-sm"
                                         :class="host.availability === 'Online' ? 'border-emerald-200 bg-emerald-500/10 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300' : host.availability === 'Offline' ? 'border-rose-200 bg-rose-500/10 text-rose-700 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-300' : 'border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200'"
