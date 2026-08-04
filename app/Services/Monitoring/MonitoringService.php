@@ -315,7 +315,30 @@ class MonitoringService
 
     private function cacheKey(string $key, ?int $companyId): string
     {
-        return sprintf('monitoring.%s.%s', $key, $companyId ?? 'global');
+        return sprintf(
+            'monitoring.%s.%s.v%s',
+            $key,
+            $companyId ?? 'global',
+            $this->cacheVersion($companyId)
+        );
+    }
+
+    public function invalidateCache(?int $companyId = null): void
+    {
+        $key = $this->cacheVersionKey($companyId);
+        $current = (int) Cache::get($key, 1);
+
+        Cache::put($key, $current + 1, now()->addYear());
+    }
+
+    private function cacheVersion(?int $companyId): int
+    {
+        return (int) Cache::get($this->cacheVersionKey($companyId), 1);
+    }
+
+    private function cacheVersionKey(?int $companyId): string
+    {
+        return sprintf('monitoring.cache.version.%s', $companyId ?? 'global');
     }
 
     private function connectionPayload(?ZabbixConnection $connection, bool $missing = false): array

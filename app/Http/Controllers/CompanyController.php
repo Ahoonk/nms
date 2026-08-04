@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateCompanyRequest;
 use App\Models\Company;
 use App\Repositories\Contracts\CompanyRepositoryInterface;
 use App\Services\Audit\ActivityLogService;
+use App\Services\Monitoring\MonitoringService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -40,7 +41,11 @@ class CompanyController extends Controller
         ]);
     }
 
-    public function store(StoreCompanyRequest $request, ActivityLogService $activityLogs): RedirectResponse
+    public function store(
+        StoreCompanyRequest $request,
+        ActivityLogService $activityLogs,
+        MonitoringService $monitoring,
+    ): RedirectResponse
     {
         $company = $this->companies->create($request->validated());
 
@@ -51,6 +56,9 @@ class CompanyController extends Controller
             'Created company ' . $company->name,
             ['company' => $company->only(['id', 'name', 'email', 'status'])],
         );
+
+        $monitoring->invalidateCache(null);
+        $monitoring->invalidateCache($company->id);
 
         return redirect()
             ->route('companies.index')
@@ -73,7 +81,12 @@ class CompanyController extends Controller
         ]);
     }
 
-    public function update(UpdateCompanyRequest $request, Company $company, ActivityLogService $activityLogs): RedirectResponse
+    public function update(
+        UpdateCompanyRequest $request,
+        Company $company,
+        ActivityLogService $activityLogs,
+        MonitoringService $monitoring,
+    ): RedirectResponse
     {
         $updated = $this->companies->update($company, $request->validated());
 
@@ -85,12 +98,20 @@ class CompanyController extends Controller
             ['changes' => $request->validated()],
         );
 
+        $monitoring->invalidateCache(null);
+        $monitoring->invalidateCache($updated->id);
+
         return redirect()
             ->route('companies.index')
             ->with('success', 'Company updated successfully.');
     }
 
-    public function destroy(Request $request, Company $company, ActivityLogService $activityLogs): RedirectResponse
+    public function destroy(
+        Request $request,
+        Company $company,
+        ActivityLogService $activityLogs,
+        MonitoringService $monitoring,
+    ): RedirectResponse
     {
         $snapshot = $company->only(['id', 'name', 'email', 'status']);
         $this->companies->delete($company);
@@ -102,6 +123,9 @@ class CompanyController extends Controller
             'Deleted company ' . $company->name,
             ['company' => $snapshot],
         );
+
+        $monitoring->invalidateCache(null);
+        $monitoring->invalidateCache((int) $snapshot['id']);
 
         return redirect()
             ->route('companies.index')

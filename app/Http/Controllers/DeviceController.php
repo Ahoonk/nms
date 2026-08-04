@@ -12,6 +12,7 @@ use App\Models\ZabbixConnection;
 use App\Repositories\Contracts\DeviceRepositoryInterface;
 use App\Repositories\Contracts\SiteRepositoryInterface;
 use App\Services\Audit\ActivityLogService;
+use App\Services\Monitoring\MonitoringService;
 use App\Services\Zabbix\ZabbixHostGroupService;
 use App\Services\Zabbix\ZabbixHostService;
 use Illuminate\Http\RedirectResponse;
@@ -59,7 +60,11 @@ class DeviceController extends Controller
         ]);
     }
 
-    public function store(StoreDeviceRequest $request, ActivityLogService $activityLogs): RedirectResponse
+    public function store(
+        StoreDeviceRequest $request,
+        ActivityLogService $activityLogs,
+        MonitoringService $monitoring,
+    ): RedirectResponse
     {
         $device = $this->devices->create($request->validated());
 
@@ -70,6 +75,12 @@ class DeviceController extends Controller
             'Created device ' . $device->hostname,
             ['device' => $device->only(['id', 'site_id', 'device_type', 'hostname', 'ip', 'status', 'zabbix_host_id'])],
         );
+
+        $monitoring->invalidateCache(null);
+        if ($device->site_id) {
+            $site = Site::with('company')->find($device->site_id);
+            $monitoring->invalidateCache($site?->company_id);
+        }
 
         return redirect()
             ->route('devices.index')
@@ -128,8 +139,14 @@ private function hostGroupOptions(): array
     }
 }
 
-    public function update(UpdateDeviceRequest $request, Device $device, ActivityLogService $activityLogs): RedirectResponse
+    public function update(
+        UpdateDeviceRequest $request,
+        Device $device,
+        ActivityLogService $activityLogs,
+        MonitoringService $monitoring,
+    ): RedirectResponse
     {
+        $originalSiteId = $device->site_id;
         $updated = $this->devices->update($device, $request->validated());
 
         $activityLogs->record(
@@ -140,13 +157,23 @@ private function hostGroupOptions(): array
             ['changes' => $request->validated()],
         );
 
+        $monitoring->invalidateCache(null);
+        $monitoring->invalidateCache($this->companyIdFromSiteId($originalSiteId));
+        $monitoring->invalidateCache($this->companyIdFromSiteId((int) $updated->site_id));
+
         return redirect()
             ->route('devices.index')
             ->with('success', 'Device updated successfully.');
     }
 
-    public function destroy(Request $request, Device $device, ActivityLogService $activityLogs): RedirectResponse
+    public function destroy(
+        Request $request,
+        Device $device,
+        ActivityLogService $activityLogs,
+        MonitoringService $monitoring,
+    ): RedirectResponse
     {
+        $companyId = $this->companyIdFromSiteId((int) $device->site_id);
         $snapshot = $device->only(['id', 'site_id', 'device_type', 'hostname', 'ip', 'status', 'zabbix_host_id']);
         $this->devices->delete($device);
 
@@ -157,6 +184,9 @@ private function hostGroupOptions(): array
             'Deleted device ' . $device->hostname,
             ['device' => $snapshot],
         );
+
+        $monitoring->invalidateCache(null);
+        $monitoring->invalidateCache($companyId);
 
         return redirect()
             ->route('devices.index')
@@ -195,6 +225,15 @@ private function hostGroupOptions(): array
             ])
             ->values()
             ->all();
+    }
+
+    private function companyIdFromSiteId(?int $siteId): ?int
+    {
+        if (! $siteId) {
+            return null;
+        }
+
+        return Site::query()->whereKey($siteId)->value('company_id');
     }
 
 private function zabbixHosts(): array

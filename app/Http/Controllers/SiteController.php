@@ -10,6 +10,7 @@ use App\Models\Site;
 use App\Repositories\Contracts\CompanyRepositoryInterface;
 use App\Repositories\Contracts\SiteRepositoryInterface;
 use App\Services\Audit\ActivityLogService;
+use App\Services\Monitoring\MonitoringService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -57,7 +58,11 @@ class SiteController extends Controller
         ]);
     }
 
-    public function store(StoreSiteRequest $request, ActivityLogService $activityLogs): RedirectResponse
+    public function store(
+        StoreSiteRequest $request,
+        ActivityLogService $activityLogs,
+        MonitoringService $monitoring,
+    ): RedirectResponse
     {
         $site = $this->sites->create($request->validated());
 
@@ -68,6 +73,9 @@ class SiteController extends Controller
             'Created site ' . $site->name,
             ['site' => $site->only(['id', 'company_id', 'name', 'status'])],
         );
+
+        $monitoring->invalidateCache(null);
+        $monitoring->invalidateCache($site->company_id);
 
         return redirect()
             ->route('sites.index')
@@ -95,8 +103,14 @@ class SiteController extends Controller
         ]);
     }
 
-    public function update(UpdateSiteRequest $request, Site $site, ActivityLogService $activityLogs): RedirectResponse
+    public function update(
+        UpdateSiteRequest $request,
+        Site $site,
+        ActivityLogService $activityLogs,
+        MonitoringService $monitoring,
+    ): RedirectResponse
     {
+        $originalCompanyId = $site->company_id;
         $updated = $this->sites->update($site, $request->validated());
 
         $activityLogs->record(
@@ -107,12 +121,21 @@ class SiteController extends Controller
             ['changes' => $request->validated()],
         );
 
+        $monitoring->invalidateCache(null);
+        $monitoring->invalidateCache($originalCompanyId);
+        $monitoring->invalidateCache($updated->company_id);
+
         return redirect()
             ->route('sites.index')
             ->with('success', 'Site updated successfully.');
     }
 
-    public function destroy(Request $request, Site $site, ActivityLogService $activityLogs): RedirectResponse
+    public function destroy(
+        Request $request,
+        Site $site,
+        ActivityLogService $activityLogs,
+        MonitoringService $monitoring,
+    ): RedirectResponse
     {
         $snapshot = $site->only(['id', 'company_id', 'name', 'status']);
         $this->sites->delete($site);
@@ -124,6 +147,9 @@ class SiteController extends Controller
             'Deleted site ' . $site->name,
             ['site' => $snapshot],
         );
+
+        $monitoring->invalidateCache(null);
+        $monitoring->invalidateCache((int) $snapshot['company_id']);
 
         return redirect()
             ->route('sites.index')
