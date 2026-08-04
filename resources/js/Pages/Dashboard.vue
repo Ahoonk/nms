@@ -202,7 +202,7 @@ watch(
                                                 {{ host.name }}
                                             </p>
                                             <p class="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
-                                                {{ host.host }}
+                                                {{ host.site_name || '-' }}
                                             </p>
                                         </div>
                                         <div class="text-right">

@@ -93,6 +93,7 @@ class DashboardController extends Controller
                         'device_id' => $device->id,
                         'name' => $device->hostname,
                         'host' => $device->hostname,
+                        'site_name' => $device->site?->name ?? '-',
                         'ip' => $device->ip,
                         'status' => $this->deviceStatusLabel($device->status),
                         'status_class' => $this->deviceStatusClass($device->status),
