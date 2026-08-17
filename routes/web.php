@@ -8,6 +8,7 @@ use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\NotificationCenterController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SiteController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\ZabbixConnectionController;
 use App\Http\Controllers\MonitoringGraphController;
 use Illuminate\Support\Facades\Route;
@@ -27,6 +28,7 @@ Route::get('/dashboard', DashboardController::class)
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('companies', CompanyController::class)->except(['show']);
+    Route::resource('users', UserController::class)->except(['show']);
     Route::resource('sites', SiteController::class)->except(['show']);
     Route::resource('devices', DeviceController::class)->except(['show']);
     Route::resource('zabbix-connections', ZabbixConnectionController::class)->except(['show']);

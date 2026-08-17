@@ -10,12 +10,14 @@ import { Link, usePage } from '@inertiajs/vue3';
 const showingNavigationDropdown = ref(false);
 const page = usePage();
 const can = (permission) => page.props.auth.user?.permissions?.includes(permission);
+const isSuperAdmin = () => page.props.auth.user?.is_super_admin;
 
 const isMonitoringActive = () =>
     route().current('monitoring.*') || route().current('notifications.index');
 
 const isAdminActive = () =>
     route().current('companies.*') ||
+    route().current('users.*') ||
     route().current('sites.*') ||
     route().current('devices.*') ||
     route().current('zabbix-connections.*') ||
@@ -81,7 +83,7 @@ const isAdminActive = () =>
                                         <DropdownLink v-if="can('monitoring.view')" :href="route('notifications.index')">Notifications</DropdownLink>
                                     </template>
                                 </Dropdown>
-                                <Dropdown align="left" width="64">
+                                <Dropdown v-if="isSuperAdmin()" align="left" width="64">
                                     <template #trigger>
                                         <button
                                             type="button"
@@ -96,6 +98,7 @@ const isAdminActive = () =>
                                     </template>
                                     <template #content>
                                         <DropdownLink v-if="can('company.manage')" :href="route('activity-trail.index')">Activity Trail</DropdownLink>
+                                        <DropdownLink :href="route('users.index')">Users</DropdownLink>
                                         <DropdownLink v-if="can('company.manage')" :href="route('companies.index')">Companies</DropdownLink>
                                         <DropdownLink v-if="can('site.manage')" :href="route('sites.index')">Sites</DropdownLink>
                                         <DropdownLink v-if="can('device.manage')" :href="route('devices.index')">Devices</DropdownLink>
@@ -238,18 +241,21 @@ const isAdminActive = () =>
                             <ResponsiveNavLink v-if="can('monitoring.view')" :href="route('notifications.index')" :active="route().current('notifications.index')">Notifications</ResponsiveNavLink>
                         </div>
 
-                        <div class="px-4 pt-4">
-                            <div class="rounded-2xl bg-slate-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                                Administration
+                        <template v-if="isSuperAdmin()">
+                            <div class="px-4 pt-4">
+                                <div class="rounded-2xl bg-slate-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                    Administration
+                                </div>
                             </div>
-                        </div>
-                        <div class="grid gap-1 px-2">
-                            <ResponsiveNavLink v-if="can('company.manage')" :href="route('activity-trail.index')" :active="route().current('activity-trail.index')">Activity Trail</ResponsiveNavLink>
-                            <ResponsiveNavLink v-if="can('company.manage')" :href="route('companies.index')" :active="route().current('companies.index')">Companies</ResponsiveNavLink>
-                            <ResponsiveNavLink v-if="can('site.manage')" :href="route('sites.index')" :active="route().current('sites.index')">Sites</ResponsiveNavLink>
-                            <ResponsiveNavLink v-if="can('device.manage')" :href="route('devices.index')" :active="route().current('devices.index')">Devices</ResponsiveNavLink>
-                            <ResponsiveNavLink v-if="can('zabbix.connection.manage')" :href="route('zabbix-connections.index')" :active="route().current('zabbix-connections.index')">Zabbix Connections</ResponsiveNavLink>
-                        </div>
+                            <div class="grid gap-1 px-2">
+                                <ResponsiveNavLink v-if="can('company.manage')" :href="route('activity-trail.index')" :active="route().current('activity-trail.index')">Activity Trail</ResponsiveNavLink>
+                                <ResponsiveNavLink :href="route('users.index')" :active="route().current('users.*')">Users</ResponsiveNavLink>
+                                <ResponsiveNavLink v-if="can('company.manage')" :href="route('companies.index')" :active="route().current('companies.index')">Companies</ResponsiveNavLink>
+                                <ResponsiveNavLink v-if="can('site.manage')" :href="route('sites.index')" :active="route().current('sites.index')">Sites</ResponsiveNavLink>
+                                <ResponsiveNavLink v-if="can('device.manage')" :href="route('devices.index')" :active="route().current('devices.index')">Devices</ResponsiveNavLink>
+                                <ResponsiveNavLink v-if="can('zabbix.connection.manage')" :href="route('zabbix-connections.index')" :active="route().current('zabbix-connections.index')">Zabbix Connections</ResponsiveNavLink>
+                            </div>
+                        </template>
                     </div>
 
                     <!-- Responsive Settings Options -->

@@ -16,6 +16,15 @@ class User extends Authenticatable
     use HasFactory, HasRoles, Notifiable;
 
     /**
+     * Additional computed attributes exposed in JSON / Inertia payloads.
+     *
+     * @var list<string>
+     */
+    protected $appends = [
+        'role',
+    ];
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -60,5 +69,10 @@ class User extends Authenticatable
     public function isSuperAdmin(): bool
     {
         return $this->hasRole(RoleName::SuperAdmin->value);
+    }
+
+    public function getRoleAttribute(): ?string
+    {
+        return $this->roles->first()?->name;
     }
 }
