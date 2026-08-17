@@ -99,7 +99,7 @@ const goToPage = (page) => {
                 </div>
 
                 <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                    <div class="grid gap-4 lg:grid-cols-3">
+                    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         <div>
                             <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Search</label>
                             <input v-model="form.search" type="text" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white" placeholder="Host, site, device" @keyup.enter="applyFilters">
@@ -128,7 +128,37 @@ const goToPage = (page) => {
                     </div>
                 </div>
 
-                <div class="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <div class="mt-6 space-y-3 md:hidden">
+                    <article v-for="host in items" :key="host.hostid" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="truncate font-semibold text-slate-900 dark:text-white">{{ host.name }}</p>
+                                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ host.host }}</p>
+                            </div>
+                            <span class="rounded-full px-3 py-1 text-xs font-medium" :class="host.status_class">{{ host.status }}</span>
+                        </div>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <span class="rounded-full px-3 py-1 text-xs font-medium" :class="host.availability_class">{{ host.availability }}</span>
+                        </div>
+                        <div class="mt-4 space-y-3 text-sm">
+                            <div v-if="host.site" class="rounded-xl bg-slate-50 p-3 dark:bg-slate-950/60">
+                                <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Site</p>
+                                <p class="mt-1 font-medium text-slate-900 dark:text-white">{{ host.site.name }}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">{{ host.site.company_name ?? 'Global' }}</p>
+                            </div>
+                            <div v-if="host.device" class="rounded-xl bg-slate-50 p-3 dark:bg-slate-950/60">
+                                <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Device</p>
+                                <p class="mt-1 font-medium text-slate-900 dark:text-white">{{ host.device.hostname }}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">{{ host.device.device_type }}</p>
+                            </div>
+                        </div>
+                    </article>
+                    <div v-if="!items.length" class="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+                        No host data returned from Zabbix.
+                    </div>
+                </div>
+
+                <div class="mt-6 hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 md:block">
                     <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                         <thead class="bg-slate-50 dark:bg-slate-950/60">
                             <tr>

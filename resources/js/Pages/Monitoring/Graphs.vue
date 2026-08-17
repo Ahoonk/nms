@@ -70,12 +70,12 @@ const goToPage = (page) => {
     <AuthenticatedLayout>
         <template #header>
             <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div>
+                <div class="min-w-0">
                     <h2 class="text-2xl font-semibold text-slate-900 dark:text-white">Graphs</h2>
                     <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Graphs are pulled from Zabbix, not re-created inside Laravel.</p>
                 </div>
                 <div class="grid gap-3 sm:grid-cols-2">
-                    <div class="min-w-64">
+                    <div class="min-w-0">
                         <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Host Filter</label>
                         <select
                             v-model="selectedHost"
@@ -119,29 +119,53 @@ const goToPage = (page) => {
                     </div>
                 </div>
 
-                <div class="mt-6 grid gap-4 lg:grid-cols-2">
+                <div class="mt-6 grid gap-4 md:hidden">
+                    <div v-for="graph in items" :key="graph.graph_id" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                        <div class="border-b border-slate-200 px-4 py-4 dark:border-slate-800">
+                            <p class="font-semibold text-slate-900 dark:text-white">{{ graph.name }}</p>
+                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ graph.host }} - {{ graph.size }}</p>
+                        </div>
+                        <div class="flex justify-center bg-white p-3 dark:bg-slate-900">
+                            <img
+                                v-if="graph.image"
+                                :src="graph.image"
+                                :alt="graph.name"
+                                class="w-full rounded-lg border border-slate-200 object-contain dark:border-slate-800"
+                            >
+                            <div
+                                v-else
+                                class="flex h-44 items-center justify-center text-sm text-slate-500"
+                            >
+                                Graph belum tersedia
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="!items.length" class="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+                        No graph returned from Zabbix.
+                    </div>
+                </div>
+
+                <div class="mt-6 hidden gap-4 md:grid md:grid-cols-1 lg:grid-cols-2">
                     <div v-for="graph in items" :key="graph.graph_id" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
                         <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
                             <p class="font-semibold text-slate-900 dark:text-white">{{ graph.name }}</p>
                             <p class="text-sm text-slate-500 dark:text-slate-400">{{ graph.host }} - {{ graph.size }}</p>
                         </div>
 
-                        <div
-                         class="bg-white dark:bg-slate-900 p-3 flex justify-center"
-                        >
-                         <img
-                             v-if="graph.image"
-                             :src="graph.image"
-                             :alt="graph.name"
-                             class="w-full rounded-lg border"
-                         />
-                         <div
-                             v-else
-                             class="h-56 flex items-center justify-center text-slate-500"
-                         >
-                             Graph belum tersedia
-                         </div>
-                       </div>
+                        <div class="flex justify-center bg-white p-3 dark:bg-slate-900">
+                            <img
+                                v-if="graph.image"
+                                :src="graph.image"
+                                :alt="graph.name"
+                                class="w-full rounded-lg border border-slate-200 object-contain dark:border-slate-800"
+                            >
+                            <div
+                                v-else
+                                class="flex h-56 items-center justify-center text-slate-500"
+                            >
+                                Graph belum tersedia
+                            </div>
+                        </div>
                     </div>
                     <div v-if="!items.length" class="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 lg:col-span-2">
                         No graph returned from Zabbix.

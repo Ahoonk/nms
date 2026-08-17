@@ -78,7 +78,7 @@ const goToPage = (page) => {
                 </div>
 
                 <div class="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                    <div class="grid gap-4 lg:grid-cols-5">
+                    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                         <div class="lg:col-span-2">
                             <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Search</label>
                             <input v-model="form.search" type="text" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white" placeholder="Message, host, tag" @keyup.enter="applyFilters">
@@ -116,7 +116,28 @@ const goToPage = (page) => {
                     </div>
                 </div>
 
-                <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <div class="space-y-3 md:hidden">
+                    <article v-for="event in items" :key="event.event_id" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ event.clock_label }}</p>
+                                <p class="mt-1 truncate text-sm text-slate-600 dark:text-slate-300">{{ event.message }}</p>
+                            </div>
+                            <div class="flex flex-col items-end gap-2">
+                                <span class="rounded-full px-3 py-1 text-xs font-medium" :class="event.type_class">{{ event.type }}</span>
+                                <span class="rounded-full px-3 py-1 text-xs font-medium" :class="event.severity_class">{{ event.severity }}</span>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex items-center justify-between gap-3">
+                            <span class="rounded-full px-3 py-1 text-xs font-medium" :class="event.status_class">{{ event.status }}</span>
+                        </div>
+                    </article>
+                    <div v-if="!items.length" class="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+                        No recent event found.
+                    </div>
+                </div>
+
+                <div class="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 md:block">
                     <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
                         <thead class="bg-slate-50 dark:bg-slate-950/60">
                             <tr>
