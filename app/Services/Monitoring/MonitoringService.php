@@ -106,7 +106,7 @@ class MonitoringService
                 );
             }
 
-            $items = $this->filterProblems($this->buildProblems($connection, self::FETCH_LIMIT), $filters, $companyId);
+            $items = $this->filterProblems($this->buildProblems($connection, self::FETCH_LIMIT, $companyId), $filters, $companyId);
             $severityCounts = $this->countSeverities($items);
             $pageData = $this->paginateRows($items, $page, $perPage);
 
@@ -141,7 +141,7 @@ class MonitoringService
                 );
             }
 
-            $items = $this->filterEvents($this->buildEvents($connection, self::FETCH_LIMIT), $filters, $companyId);
+            $items = $this->filterEvents($this->buildEvents($connection, self::FETCH_LIMIT, $companyId), $filters, $companyId);
             $pageData = $this->paginateRows($items, $page, $perPage);
 
             return new MonitoringEventsData(
@@ -457,15 +457,23 @@ class MonitoringService
 
     private function buildProblems(ZabbixConnection $connection, int $limit, ?int $companyId = null): array
     {
+        $hostIds = $this->companyZabbixHostIds($companyId);
+
         try {
-            $response = $this->problems->list($connection, [
+            $params = [
                 'output' => ['eventid', 'objectid', 'clock', 'name', 'severity', 'acknowledged', 'r_eventid'],
                 'selectTags' => 'extend',
                 'sortfield' => 'eventid',
                 'sortorder' => 'DESC',
                 'recent' => true,
                 'limit' => $limit,
-            ]);
+            ];
+
+            if ($hostIds !== []) {
+                $params['hostids'] = $hostIds;
+            }
+
+            $response = $this->problems->list($connection, $params);
         } catch (Throwable $e) {
             throw $e;
         }
@@ -519,16 +527,23 @@ class MonitoringService
     private function buildEvents(ZabbixConnection $connection, int $limit, ?int $companyId = null): array
     {
         $deviceIndex = $this->deviceIndex($companyId);
+        $hostIds = $this->companyZabbixHostIds($companyId);
 
         try {
-            $response = $this->events->list($connection, [
+            $params = [
                 'output' => ['eventid', 'source', 'object', 'objectid', 'clock', 'ns', 'value', 'severity', 'name', 'acknowledged'],
                 'selectHosts' => ['hostid', 'host', 'name'],
                 'selectTags' => 'extend',
                 'sortfield' => ['clock'],
                 'sortorder' => 'DESC',
                 'limit' => $limit,
-            ]);
+            ];
+
+            if ($hostIds !== []) {
+                $params['hostids'] = $hostIds;
+            }
+
+            $response = $this->events->list($connection, $params);
         } catch (Throwable $e) {
             throw $e;
         }
@@ -998,6 +1013,21 @@ class MonitoringService
             ->pluck('hostid')
             ->filter()
             ->map(fn ($hostId) => (int) $hostId)
+            ->values()
+            ->all();
+    }
+
+    private function companyZabbixHostIds(?int $companyId): array
+    {
+        if ($companyId === null) {
+            return [];
+        }
+
+        return $this->devices->allByCompany($companyId)
+            ->pluck('zabbix_host_id')
+            ->filter()
+            ->map(fn ($hostId) => (string) $hostId)
+            ->unique()
             ->values()
             ->all();
     }
