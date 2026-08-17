@@ -14,6 +14,7 @@ use App\Services\Zabbix\ZabbixConnectionResolver;
 use App\Services\Zabbix\ZabbixEventService;
 use App\Services\Zabbix\ZabbixGraphService;
 use App\Services\Zabbix\ZabbixHostService;
+use App\Services\Zabbix\ZabbixTriggerService;
 use App\Services\Zabbix\ZabbixProblemService;
 use App\Services\WireGuard\WireGuardService;
 use Carbon\Carbon;
@@ -31,6 +32,7 @@ class MonitoringService
         private readonly ZabbixProblemService $problems,
         private readonly ZabbixEventService $events,
         private readonly ZabbixGraphService $graphs,
+        private readonly ZabbixTriggerService $triggers,
         private readonly DeviceRepositoryInterface $devices,
         private readonly WireGuardService $wireguard,
     ) {
@@ -56,9 +58,9 @@ class MonitoringService
             }
 
             $hostRows = $this->buildHosts($connection, 8, $companyId);
-            $problemRows = $this->buildProblems($connection, 8);
-            $eventRows = $this->buildEvents($connection, 8);
-            $graphRows = $this->buildGraphs($connection, null, 6);
+            $problemRows = $this->buildProblems($connection, 8, $companyId);
+            $eventRows = $this->buildEvents($connection, 8, $companyId);
+            $graphRows = $this->buildGraphs($connection, null, 6, $this->hostIds($hostRows));
 
             $hostCounts = $this->countAvailability($hostRows);
             $severityCounts = $this->countSeverities($problemRows);
@@ -205,8 +207,8 @@ class MonitoringService
             }
 
             $hosts = $this->filterHosts($this->buildHosts($connection, self::FETCH_LIMIT, $companyId), $filters, $companyId);
-            $selectedHostId = $hostId ?? $this->firstHostId($hosts);
-            $items = $this->filterGraphs($this->buildGraphs($connection, $selectedHostId, self::FETCH_LIMIT), $filters, $companyId, $hosts);
+            $selectedHostId = $this->resolveSelectedHostId($hosts, $hostId);
+            $items = $this->filterGraphs($this->buildGraphs($connection, $selectedHostId, self::FETCH_LIMIT, $this->hostIds($hosts)), $filters, $companyId, $hosts);
             $pageData = $this->paginateRows($items, $page, $perPage);
 
             return new MonitoringGraphsData(
@@ -287,7 +289,7 @@ class MonitoringService
                 ];
             }
 
-            $graphs = $this->buildGraphs($connection, null, self::FETCH_LIMIT);
+            $graphs = $this->buildGraphs($connection, null, self::FETCH_LIMIT, $this->hostIds($this->buildHosts($connection, self::FETCH_LIMIT, $companyId)));
             $featured = collect($graphs)->filter(function (array $graph): bool {
                 $name = mb_strtolower((string) ($graph['name'] ?? ''));
 
@@ -442,11 +444,18 @@ class MonitoringService
                         ->all(),
                 ];
             })
+            ->filter(function (array $row) use ($companyId): bool {
+                if ($companyId === null) {
+                    return true;
+                }
+
+                return (bool) ($row['mapped_device'] ?? false);
+            })
             ->values()
             ->all();
     }
 
-    private function buildProblems(ZabbixConnection $connection, int $limit): array
+    private function buildProblems(ZabbixConnection $connection, int $limit, ?int $companyId = null): array
     {
         try {
             $response = $this->problems->list($connection, [
@@ -461,9 +470,29 @@ class MonitoringService
             throw $e;
         }
 
-        return collect($response['result'] ?? [])
-            ->map(function (array $problem): array {
+        $rows = collect($response['result'] ?? []);
+        $triggerHosts = $this->triggerHostIndex(
+            $connection,
+            $rows->pluck('objectid')->filter()->map(fn ($id) => (string) $id)->values()->all()
+        );
+        $deviceIndex = $this->deviceIndex($companyId);
+
+        return $rows
+            ->map(function (array $problem) use ($triggerHosts): array {
+                $problem['hosts'] = $triggerHosts[(string) Arr::get($problem, 'objectid')] ?? [];
+
+                return $problem;
+            })
+            ->filter(function (array $problem) use ($companyId, $deviceIndex): bool {
+                if ($companyId === null) {
+                    return true;
+                }
+
+                return $this->rowMatchesDeviceScope($problem, $deviceIndex);
+            })
+            ->map(function (array $problem) use ($deviceIndex): array {
                 $severity = $this->severityMeta((int) ($problem['severity'] ?? 0));
+                $device = $this->matchDeviceToRow($problem, $deviceIndex);
 
                 return [
                     'event_id' => Arr::get($problem, 'eventid'),
@@ -478,17 +507,23 @@ class MonitoringService
                     'clock' => Arr::get($problem, 'clock'),
                     'clock_label' => $this->formatTimestamp(Arr::get($problem, 'clock')),
                     'acknowledged' => (int) Arr::get($problem, 'acknowledged') === 1,
+                    'mapped_device' => (bool) $device,
+                    'device' => $device,
+                    'site' => $device['site'] ?? null,
                 ];
             })
             ->values()
             ->all();
     }
 
-    private function buildEvents(ZabbixConnection $connection, int $limit): array
+    private function buildEvents(ZabbixConnection $connection, int $limit, ?int $companyId = null): array
     {
+        $deviceIndex = $this->deviceIndex($companyId);
+
         try {
             $response = $this->events->list($connection, [
                 'output' => ['eventid', 'source', 'object', 'objectid', 'clock', 'ns', 'value', 'severity', 'name', 'acknowledged'],
+                'selectHosts' => ['hostid', 'host', 'name'],
                 'selectTags' => 'extend',
                 'sortfield' => ['clock'],
                 'sortorder' => 'DESC',
@@ -499,8 +534,16 @@ class MonitoringService
         }
 
         return collect($response['result'] ?? [])
-            ->map(function (array $event): array {
+            ->filter(function (array $event) use ($companyId, $deviceIndex): bool {
+                if ($companyId === null) {
+                    return true;
+                }
+
+                return $this->rowMatchesDeviceScope($event, $deviceIndex);
+            })
+            ->map(function (array $event) use ($deviceIndex): array {
                 $severity = $this->severityMeta((int) ($event['severity'] ?? 0));
+                $device = $this->matchDeviceToRow($event, $deviceIndex);
 
                 return [
                     'event_id' => Arr::get($event, 'eventid'),
@@ -516,13 +559,24 @@ class MonitoringService
                     'message' => Arr::get($event, 'name', '-'),
                     'clock' => Arr::get($event, 'clock'),
                     'clock_label' => $this->formatTimestamp(Arr::get($event, 'clock')),
+                    'hosts' => collect(Arr::get($event, 'hosts', []))
+                        ->map(fn (array $host): array => [
+                            'hostid' => Arr::get($host, 'hostid'),
+                            'host' => Arr::get($host, 'host'),
+                            'name' => Arr::get($host, 'name', Arr::get($host, 'host')),
+                        ])
+                        ->values()
+                        ->all(),
+                    'mapped_device' => (bool) $device,
+                    'device' => $device,
+                    'site' => $device['site'] ?? null,
                 ];
             })
             ->values()
             ->all();
     }
 
-    private function buildGraphs(ZabbixConnection $connection, ?int $hostId, int $limit): array
+    private function buildGraphs(ZabbixConnection $connection, ?int $hostId, int $limit, array $hostIds = []): array
     {
         $params = [
             'output' => ['graphid', 'name', 'width', 'height'],
@@ -534,6 +588,8 @@ class MonitoringService
 
         if ($hostId) {
             $params['hostids'] = [$hostId];
+        } elseif ($hostIds) {
+            $params['hostids'] = array_values(array_unique(array_map('intval', $hostIds)));
         }
 
         try {
@@ -934,6 +990,97 @@ class MonitoringService
         $first = Arr::first($hosts);
 
         return $first ? (int) Arr::get($first, 'hostid') : null;
+    }
+
+    private function hostIds(array $hosts): array
+    {
+        return collect($hosts)
+            ->pluck('hostid')
+            ->filter()
+            ->map(fn ($hostId) => (int) $hostId)
+            ->values()
+            ->all();
+    }
+
+    private function rowMatchesDeviceScope(array $row, array $deviceIndex): bool
+    {
+        $hosts = Arr::get($row, 'hosts', []);
+
+        if (is_array($hosts) && $hosts) {
+            foreach ($hosts as $host) {
+                if (is_array($host) && $this->matchDeviceToHost($host, $deviceIndex)) {
+                    return true;
+                }
+            }
+        }
+
+        return $this->matchDeviceToRow($row, $deviceIndex) !== null;
+    }
+
+    private function resolveSelectedHostId(array $hosts, ?int $hostId): ?int
+    {
+        if ($hostId !== null) {
+            $allowedHostIds = collect($hosts)
+                ->pluck('hostid')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            if (in_array($hostId, $allowedHostIds, true)) {
+                return $hostId;
+            }
+        }
+
+        return $this->firstHostId($hosts);
+    }
+
+    private function matchDeviceToRow(array $row, array $deviceIndex): ?array
+    {
+        $haystack = $this->normalizeLookupKey((string) json_encode($row, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+        foreach (['byHostname'] as $bucket) {
+            foreach ($deviceIndex[$bucket] ?? [] as $needle => $device) {
+                if ($needle !== '' && str_contains($haystack, $this->normalizeLookupKey((string) $needle))) {
+                    return $device;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function triggerHostIndex(ZabbixConnection $connection, array $triggerIds): array
+    {
+        if ($triggerIds === []) {
+            return [];
+        }
+
+        try {
+            $response = $this->triggers->list($connection, [
+                'triggerids' => $triggerIds,
+                'output' => ['triggerid'],
+                'selectHosts' => ['hostid', 'host', 'name'],
+                'preservekeys' => true,
+            ]);
+        } catch (Throwable) {
+            return [];
+        }
+
+        return collect($response['result'] ?? [])
+            ->mapWithKeys(function (array $trigger, string|int $key): array {
+                $triggerId = (string) (Arr::get($trigger, 'triggerid') ?? $key);
+
+                return [
+                    $triggerId => collect(Arr::get($trigger, 'hosts', []))
+                        ->map(fn (array $host): array => [
+                            'hostid' => Arr::get($host, 'hostid'),
+                            'host' => Arr::get($host, 'host'),
+                            'name' => Arr::get($host, 'name', Arr::get($host, 'host')),
+                        ])
+                        ->values()
+                        ->all(),
+                ];
+            })
+            ->all();
     }
 
     private function firstInterfaceIp(array $host): ?string
