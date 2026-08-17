@@ -1026,7 +1026,7 @@ class MonitoringService
         return $this->devices->allByCompany($companyId)
             ->pluck('zabbix_host_id')
             ->filter()
-            ->map(fn ($hostId) => (string) $hostId)
+            ->map(fn ($hostId) => (int) $hostId)
             ->unique()
             ->values()
             ->all();
